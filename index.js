@@ -105,7 +105,7 @@ app.post('/orders', rateLimiter, async (req, res) => {
     
     const token = jwt.sign({ userId: user.id }, SECRET_KEY, { expiresIn: '1d' });
     
-    const product = await Product.findById(productId);
+    const product = await Product.findOne({ id: productId });
     if (!product) return res.status(404).json({ error: 'Product not found' });
     if (product.stock < quantity) return res.status(400).json({ error: 'Not enough stock' });
     
