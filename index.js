@@ -7,7 +7,7 @@ import winston from 'winston';
 import expressWinston from 'express-winston';
 import cors from 'cors';
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 const app = express();
 app.use(express.json());
 app.use(cors())
@@ -94,7 +94,8 @@ app.get('/products', async (req, res) => {
 
 // Create an Order with User Creation & Token
 app.post('/orders', rateLimiter, async (req, res) => {
-  const { name, email, productId, quantity } = req.body;
+  let { name, email, productId, quantity } = req.body;
+  quantity = +quantity;
   try {
     let user = await User.findOne({ email });
     if (!user) {
@@ -136,8 +137,11 @@ app.post('/orders', rateLimiter, async (req, res) => {
 
 // Retrieve a User’s Orders (with token validation)
 app.get('/orders/me', authenticateToken, rateLimiter, async (req, res) => {
+    console.log(`req.userId`);
+    console.log(req.userId);
+    
   try {
-    const orders = await Order.find({ userId: req.params.userId });
+    const orders = await Order.find({userId: req.userId});
     res.json(orders);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -163,4 +167,4 @@ app.post('/products/generate', async (req, res) => {
   });
 
 // Start Server
-app.listen(port, () => console.log('Server running on port 3000'));
+app.listen(port, () => console.log('Server running on port ' + port));
