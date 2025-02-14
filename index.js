@@ -5,10 +5,12 @@ import jwt from 'jsonwebtoken';
 import rateLimit from 'express-rate-limit';
 import winston from 'winston';
 import expressWinston from 'express-winston';
+import cors from 'cors';
 
 const port = process.env.PORT || 3000;
 const app = express();
 app.use(express.json());
+app.use(cors())
 app.use(expressWinston.logger({
     transports: [
       new winston.transports.Console()
