@@ -2,19 +2,33 @@ import express from 'express';
 import mongoose from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
+import winston from 'winston';
+import expressWinston from 'express-winston';
 
 const port = process.env.PORT || 3000;
 const app = express();
 app.use(express.json());
+app.use(expressWinston.logger({
+    transports: [
+      new winston.transports.Console()
+    ],
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.json()
+    ),
+    meta: true, // optional: control whether you want to log the meta data about the request (default to true)
+    msg: "HTTP {{req.method}} {{req.url}}", // optional: customize the default logging message. E.g. "{{res.statusCode}} {{req.method}} {{res.responseTime}}ms {{req.url}}"
+    expressFormat: true, // Use the default Express/morgan request formatting. Enabling this will override any msg if true. Will only output colors with colorize set to true
+    colorize: false, // Color the text and status code, using the Express/morgan color palette (text: gray, status: default green, 3XX cyan, 4XX yellow, 5XX red).
+    ignoreRoute: function (req, res) { return false; } // optional: allows to skip some log messages based on request and/or response
+  }));
 
 // TODO: move secrets to env variables
 const SECRET_KEY = 'your_secret_key';
 
 // TODO: move secrets to env variables
-mongoose.connect('mongodb+srv://root:YT9LvXkjzHuYmvyD@cluster0.t5sp9.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+mongoose.connect('mongodb+srv://root:YT9LvXkjzHuYmvyD@cluster0.t5sp9.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0');
 
 // Schemas & Models
 const userSchema = new mongoose.Schema({
@@ -47,7 +61,7 @@ const Order = mongoose.model('Order', orderSchema);
 // Middleware to authenticate token
 const authenticateToken = (req, res, next) => {
     const token = req.header('Authorization');
-    if (!token) return res.status(401).json({ error: 'Access denied' });
+    if (!token) return res.status(401).json({ error: 'Access denied. Provide token' });
   
     try {
       const verified = jwt.verify(token.replace('Bearer ', ''), SECRET_KEY);
@@ -56,10 +70,18 @@ const authenticateToken = (req, res, next) => {
     } catch (error) {
       res.status(400).json({ error: 'Invalid token' });
     }
-  };
+};
+
+  // Rate Limiter Middleware
+const rateLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 10, // Limit each user to 10 requests per minute
+    keyGenerator: (req) => req.userId || req.ip,
+    handler: (req, res) => res.status(429).json({ error: 'Too many requests, please try again later' }),
+});
 
 // Create an Order with User Creation & Token
-app.post('/orders', async (req, res) => {
+app.post('/orders', rateLimiter, async (req, res) => {
   const { name, email, productId, quantity } = req.body;
   try {
     let user = await User.findOne({ email });
@@ -103,7 +125,7 @@ app.post('/orders', async (req, res) => {
 });
 
 // Retrieve a User’s Orders (with token validation)
-app.get('/orders/:userId', authenticateToken, async (req, res) => {
+app.get('/orders/:userId', rateLimiter, authenticateToken, async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.params.userId });
     res.json(orders);
@@ -114,6 +136,7 @@ app.get('/orders/:userId', authenticateToken, async (req, res) => {
 
 // Dummy products data
 // Create 10 Products
+// TODO: Delete after MVP
 app.post('/products/generate', async (req, res) => {
     try {
       const products = Array.from({ length: 10 }).map(() => ({
