@@ -6,10 +6,11 @@ import jwt from 'jsonwebtoken';
 const app = express();
 app.use(express.json());
 
+// TODO: move secrets to env variables
 const SECRET_KEY = 'your_secret_key';
 
-// MongoDB Connection
-mongoose.connect('mongodb://localhost:27017/shop', {
+// TODO: move secrets to env variables
+mongoose.connect('mongodb+srv://root:YT9LvXkjzHuYmvyD@cluster0.t5sp9.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
@@ -41,6 +42,20 @@ const orderSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 const Order = mongoose.model('Order', orderSchema);
+
+// Middleware to authenticate token
+const authenticateToken = (req, res, next) => {
+    const token = req.header('Authorization');
+    if (!token) return res.status(401).json({ error: 'Access denied' });
+  
+    try {
+      const verified = jwt.verify(token.replace('Bearer ', ''), SECRET_KEY);
+      req.userId = verified.userId;
+      next();
+    } catch (error) {
+      res.status(400).json({ error: 'Invalid token' });
+    }
+  };
 
 // Create an Order with User Creation & Token
 app.post('/orders', async (req, res) => {
@@ -86,8 +101,8 @@ app.post('/orders', async (req, res) => {
   }
 });
 
-// Retrieve a User’s Orders
-app.get('/orders/:userId', async (req, res) => {
+// Retrieve a User’s Orders (with token validation)
+app.get('/orders/:userId', authenticateToken, async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.params.userId });
     res.json(orders);
@@ -95,6 +110,23 @@ app.get('/orders/:userId', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// Dummy products data
+// Create 10 Products
+app.post('/products/generate', async (req, res) => {
+    try {
+      const products = Array.from({ length: 10 }).map(() => ({
+        name: `Product-${uuidv4().slice(0, 6)}`,
+        price: Math.floor(Math.random() * (100 - 50 + 1)) + 50,
+        stock: Math.floor(Math.random() * 100) + 1,
+      }));
+      
+      await Product.insertMany(products);
+      res.status(201).json({ message: '10 products created', products });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
 // Start Server
 app.listen(3000, () => console.log('Server running on port 3000'));
