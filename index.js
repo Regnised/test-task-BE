@@ -38,7 +38,6 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, unique: true, required: true },
   balance: { type: mongoose.Types.Decimal128, default: 100 },
-  token: { type: String },
 });
 const User = mongoose.model('User', userSchema);
 
@@ -104,10 +103,8 @@ app.post('/orders', rateLimiter, async (req, res) => {
     }
     
     const token = jwt.sign({ userId: user.id }, SECRET_KEY, { expiresIn: '1d' });
-    user.token = token;
-    await user.save();
     
-    const product = await Product.findOne({ id: productId });
+    const product = await Product.findById(productId);
     if (!product) return res.status(404).json({ error: 'Product not found' });
     if (product.stock < quantity) return res.status(400).json({ error: 'Not enough stock' });
     
