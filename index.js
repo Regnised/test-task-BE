@@ -137,9 +137,6 @@ app.post('/orders', rateLimiter, async (req, res) => {
 
 // Retrieve a User’s Orders (with token validation)
 app.get('/orders/me', authenticateToken, rateLimiter, async (req, res) => {
-    console.log(`req.userId`);
-    console.log(req.userId);
-    
   try {
     const orders = await Order.find({userId: req.userId});
     res.json(orders);
@@ -148,23 +145,4 @@ app.get('/orders/me', authenticateToken, rateLimiter, async (req, res) => {
   }
 });
 
-// Dummy products data
-// Create 10 Products
-// TODO: Delete after MVP
-app.post('/products/generate', async (req, res) => {
-    try {
-      const products = Array.from({ length: 10 }).map(() => ({
-        name: `Product-${uuidv4().slice(0, 6)}`,
-        price: Math.floor(Math.random() * (100 - 50 + 1)) + 50,
-        stock: Math.floor(Math.random() * 100) + 1,
-      }));
-      
-      await Product.insertMany(products);
-      res.status(201).json({ message: '10 products created', products });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-// Start Server
 app.listen(port, () => console.log('Server running on port ' + port));
