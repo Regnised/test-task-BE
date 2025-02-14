@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 
+const port = process.env.PORT || 3000;
 const app = express();
 app.use(express.json());
 
@@ -129,4 +130,4 @@ app.post('/products/generate', async (req, res) => {
   });
 
 // Start Server
-app.listen(3000, () => console.log('Server running on port 3000'));
+app.listen(port, () => console.log('Server running on port 3000'));
