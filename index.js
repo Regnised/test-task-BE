@@ -80,6 +80,17 @@ const rateLimiter = rateLimit({
     handler: (req, res) => res.status(429).json({ error: 'Too many requests, please try again later' }),
 });
 
+// Get Products
+app.get('/products', async (req, res) => {
+    try {
+      const products = await Product.find();
+      res.json(products);
+    } catch (error) {
+      logger.error('Error retrieving products', { error: error.message });
+      res.status(500).json({ error: error.message });
+    }
+  });
+
 // Create an Order with User Creation & Token
 app.post('/orders', rateLimiter, async (req, res) => {
   const { name, email, productId, quantity } = req.body;
@@ -125,7 +136,7 @@ app.post('/orders', rateLimiter, async (req, res) => {
 });
 
 // Retrieve a User’s Orders (with token validation)
-app.get('/orders/:userId', rateLimiter, authenticateToken, async (req, res) => {
+app.get('/orders/me', authenticateToken, rateLimiter, async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.params.userId });
     res.json(orders);
